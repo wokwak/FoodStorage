@@ -1,0 +1,51 @@
+!pip install torch
+!pip install -Uqq fastbook
+import fastbook
+
+from fastbook import *
+
+from google.colab import drive
+drive.mount('/content/gdrive', force_remount=True)
+path = Path("/content/gdrive/My Drive/foodydudy/images")
+path
+
+path.ls()
+(path/"train").ls()
+(path/"train/1").ls()
+
+dblock = DataBlock(
+    blocks=(ImageBlock, CategoryBlock), #x - image; y - single class
+    get_items=get_image_files, #get image
+    splitter=GrandparentSplitter(), #use parent folder as train-valid split
+    get_y=parent_label, #use parent folder as label
+    #two choices for resizing and rationale
+    #squishing to prevent cropping places without chips/raisins
+    item_tfms=Resize(512, method=ResizeMethod.Squish), 
+    # #cropping to preserve image quality; tried and doesn't work - peaked at 0.85 val acc
+    # item_tfms=RandomResizedCrop(512),
+    batch_tfms=aug_transforms(size=512, flip_vert=True), #standard fastai augmentation at size 512
+    )
+dls = dblock.dataloaders(path, bs=64) #batch size = 64
+
+dls.train.show_batch(max_n=9, nrows=3, unique=True)
+
+learn = cnn_learner(dls, resnet18, metrics=error_rate)
+learn.fine_tune(4)
+
+interp = ClassificationInterpretation.from_learner(learn)
+interp.plot_confusion_matrix()
+
+interp.plot_top_losses(12, nrows=3)
+
+learn.show_results()
+
+imagetotest='/content/gdrive/My Drive/foodydudy/images/FinalTest/0004.jpg'
+learn.predict(imagetotest)
+
+
+
+
+
+
+
+
